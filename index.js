@@ -1,15 +1,15 @@
 const { chromium } = require("playwright");
-const links = require("./data");
+const { links } = require("./data");
 
 const OpenBrowser = async (ad) => {
   const browser = await chromium.launch({
     headless: false,
     args: ["--disable-blink-features=AutomationControlled"],
-    proxy: {
-      server: "148.113.161.145:5959",
-      username: "doublemobmedia-res-us-sid-",
-      password: "47Vehty00u6WpDQ",
-    },
+    // proxy: {
+    //   server: "148.113.161.145:5959",
+    //   username: "doublemobmedia-res-us-sid-",
+    //   password: "47Vehty00u6WpDQ",
+    // },
   });
 
   const context = await browser.newContext({
@@ -123,7 +123,7 @@ const OpenBrowser = async (ad) => {
         context.getImageData = function (sx, sy, sw, sh) {
           const imageData = originalGetImageData.call(this, sx, sy, sw, sh);
           for (let i = 0; i < imageData.data.length; i += 4) {
-            imageData.data[i] = imageData.data[i] ^ 0xff; // Invert colors as an example
+            imageData.data[i] = imageData.data[i] ^ 0xff;
           }
           return imageData;
         };
@@ -141,23 +141,24 @@ const OpenBrowser = async (ad) => {
   });
 
   const page = await context.newPage();
-
-  // Simulate human-like interaction with random delays
-
-  // await page.goto("https://bot.sannysoft.com");
   await page.goto(ad);
-  // Wait for a few seconds before closing the browser
-  // await new Promise((resolve) => setTimeout(resolve, 30000));
 
-  // // Close the context and browser
+  await new Promise((resolve) =>
+    setTimeout(resolve, Math.floor(Math.random() * 5000))
+  );
+
+  await page.mouse.wheel(0, Math.floor(Math.random() * 5000));
+  await page.mouse.click(400, 400);
+
   // await context.close();
   // await browser.close();
 };
 
 const navigateThroughLinks = async () => {
+  OpenBrowser("https://bot.sannysoft.com/");
   links.map((link) => {
     console.log(link.link);
-    OpenBrowser(link.link);
+    // OpenBrowser(link.link);
   });
 };
 navigateThroughLinks();
