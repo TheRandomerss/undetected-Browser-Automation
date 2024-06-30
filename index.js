@@ -140,10 +140,16 @@ const OpenBrowser = async (ad) => {
     };
   });
 
+  const page = await context.newPage();
+
+  // Simulate human-like interaction with random delays
+
   // await page.goto("https://bot.sannysoft.com");
   await page.goto(ad);
   // Wait for a few seconds before closing the browser
   // await new Promise((resolve) => setTimeout(resolve, 30000));
+
+  // // Close the context and browser
   // await context.close();
   // await browser.close();
 };
