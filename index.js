@@ -1,15 +1,21 @@
 const { chromium } = require("playwright");
-const { links } = require("./data");
+const { links, proxyArray } = require("./data");
 
-const OpenBrowser = async (ad) => {
+function generateRandomNumber(min, max) {
+  var minm = min;
+  var maxm = max;
+  return Math.floor(Math.random() * (maxm - minm + 1)) + minm;
+}
+
+const OpenBrowser = async (ad, username) => {
   const browser = await chromium.launch({
     headless: false,
     args: ["--disable-blink-features=AutomationControlled"],
-    // proxy: {
-    //   server: "148.113.161.145:5959",
-    //   username: "doublemobmedia-res-us-sid-",
-    //   password: "47Vehty00u6WpDQ",
-    // },
+    proxy: {
+      server: "gw-doublemobmedia.ntnt.io:5959",
+      username: username,
+      password: "47Vehty00u6WpDQ",
+    },
   });
 
   const context = await browser.newContext({
@@ -19,13 +25,29 @@ const OpenBrowser = async (ad) => {
     timezoneId: "America/New_York",
     viewport: { width: 1920, height: 1080 },
     deviceScaleFactor: 2,
+    ignoreHTTPSErrors: true,
   });
 
-  // Inject custom scripts to modify WebRTC, Canvas, GPU, CPU, RAM, and other attributes
+  const usaTimezones = [
+    "America/New_York",
+    "America/Chicago",
+    "America/Denver",
+    "America/Los_Angeles",
+    "America/Anchorage",
+    "America/Phoenix",
+    "America/Indiana/Indianapolis",
+    "Pacific/Honolulu",
+  ];
+
+  const getRandomTimezone = () => {
+    return usaTimezones[Math.floor(Math.random() * usaTimezones.length)];
+  };
+
   await context.addInitScript(() => {
-    // Modify navigator properties
     Object.defineProperty(navigator, "platform", { get: () => "Win32" });
-    Object.defineProperty(navigator, "hardwareConcurrency", { get: () => 16 });
+    Object.defineProperty(navigator, "hardwareConcurrency", {
+      get: () => 16,
+    });
     Object.defineProperty(navigator, "deviceMemory", { get: () => 16 });
 
     // Modify WebRTC properties
@@ -134,31 +156,63 @@ const OpenBrowser = async (ad) => {
     // Modify timezone
     Intl.DateTimeFormat = class extends Intl.DateTimeFormat {
       constructor(locales, options = {}) {
-        options.timeZone = "America/New_York";
+        options.timeZone = getRandomTimezone();
         super(locales, options);
       }
     };
   });
 
-  const page = await context.newPage();
-  await page.goto(ad);
+  const blockedDomains = ["www.opera.com"];
 
-  await new Promise((resolve) =>
-    setTimeout(resolve, Math.floor(Math.random() * 5000))
-  );
+  // Intercept network requests in the context
+  await context.route("**/*", (route) => {
+    const request = route.request();
 
-  await page.mouse.wheel(0, Math.floor(Math.random() * 5000));
-  await page.mouse.click(400, 400);
+    // Get the hostname of the request
+    const url = new URL(request.url());
+    const hostname = url.hostname;
 
-  // await context.close();
-  // await browser.close();
-};
-
-const navigateThroughLinks = async () => {
-  OpenBrowser("https://bot.sannysoft.com/");
-  links.map((link) => {
-    console.log(link.link);
-    // OpenBrowser(link.link);
+    // Check if the hostname matches any blocked domain
+    if (blockedDomains.includes(hostname)) {
+      console.log(`Blocking request to ${hostname}`);
+      route.abort();
+    } else {
+      route.continue();
+    }
   });
+
+  try {
+    const page = await context.newPage();
+    await page.goto(ad, {
+      waitUntil: "load",
+      timeout: 15000, // Increase timeout to 60 seconds
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, Math.floor(25000)));
+
+    await context.close();
+    await browser.close();
+  } catch (error) {
+    await context.close();
+    await browser.close();
+  }
 };
-navigateThroughLinks();
+
+const tasksPoll = async () => {
+  const tasks = links.map((ad) => {
+    const username =
+      "doublemobmedia-res-us-sid-" + String(generateRandomNumber(100, 100000));
+    console.log(username);
+    return OpenBrowser(ad.link, username);
+  });
+
+  await Promise.all(tasks);
+};
+
+const RunTasks = async () => {
+  for (let i = 0; i < 100; i++) {
+    await tasksPoll();
+  }
+};
+
+RunTasks();
